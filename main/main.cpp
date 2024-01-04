@@ -4,6 +4,8 @@
 #include "logger.hpp"
 #include "task.hpp"
 
+#include "usb.hpp"
+
 using namespace std::chrono_literals;
 
 extern "C" void app_main(void) {
@@ -13,9 +15,13 @@ extern "C" void app_main(void) {
     return std::chrono::duration<float>(now - start).count();
   };
 
-  espp::Logger logger({.tag = "Template", .level = espp::Logger::Verbosity::DEBUG});
+  espp::Logger logger({.tag = "USB Audio Example", .level = espp::Logger::Verbosity::INFO});
 
   logger.info("Bootup");
+
+  // initialize the USB device
+  logger.info("Initializing USB");
+  usb_init();
 
   // make a simple task that prints "Hello World!" every second
   espp::Task task({
