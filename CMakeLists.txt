@@ -11,7 +11,7 @@ set(EXTRA_COMPONENT_DIRS
 
 set(
   COMPONENTS
-  "main esptool_py logger task tinyusb usb"
+  "main esptool_py logger task tinyusb usb i2c"
   CACHE STRING
   "List of components to include"
   )

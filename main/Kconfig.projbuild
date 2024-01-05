@@ -1,5 +1,16 @@
 menu "USB Audio Configuration"
 
+    choice
+        prompt "Module Configuration"
+        default HARDWARE_BOX
+        help
+            Select which display + SoC module you're using.
+        config HARDWARE_BOX
+            bool "ESP32-S3-BOX"
+        config HARDWARE_BOX_3
+            bool "ESP32-S3-BOX-3"
+    endchoice
+
     menu "TinyUSB task configuration"
         config TINYUSB_NO_DEFAULT_TASK
             bool "Do not create a TinyUSB task"

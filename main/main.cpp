@@ -1,9 +1,11 @@
 #include <chrono>
 #include <thread>
 
+#include "i2c.hpp"
 #include "logger.hpp"
 #include "task.hpp"
 
+#include "box_hal.hpp"
 #include "usb.hpp"
 
 using namespace std::chrono_literals;
@@ -18,6 +20,14 @@ extern "C" void app_main(void) {
   espp::Logger logger({.tag = "USB Audio Example", .level = espp::Logger::Verbosity::INFO});
 
   logger.info("Bootup");
+
+  // initialize the internal i2c bus (for the codecs)
+  espp::I2c internal_i2c(espp::I2c::Config{
+      .port = box_hal::internal_i2c_port,
+      .sda_io_num = box_hal::internal_i2c_sda,
+      .scl_io_num = box_hal::internal_i2c_scl,
+      .sda_pullup_en = GPIO_PULLUP_ENABLE,
+      .scl_pullup_en = GPIO_PULLUP_ENABLE});
 
   // initialize the USB device
   logger.info("Initializing USB");
