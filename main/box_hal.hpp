@@ -1,5 +1,9 @@
 #pragma once
 
+#include "event_manager.hpp"
+
+extern const std::string mute_button_topic;
+
 #if CONFIG_HARDWARE_BOX
 #include "box.hpp"
 #elif CONFIG_HARDWARE_BOX_3

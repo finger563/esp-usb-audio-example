@@ -6,6 +6,7 @@
 #include "task.hpp"
 
 #include "box_hal.hpp"
+#include "i2s_audio.hpp"
 #include "usb.hpp"
 
 using namespace std::chrono_literals;
@@ -22,16 +23,20 @@ extern "C" void app_main(void) {
   logger.info("Bootup");
 
   // initialize the internal i2c bus (for the codecs)
-  espp::I2c internal_i2c(espp::I2c::Config{
+  auto internal_i2c = std::make_shared<espp::I2c>(espp::I2c::Config{
       .port = box_hal::internal_i2c_port,
       .sda_io_num = box_hal::internal_i2c_sda,
       .scl_io_num = box_hal::internal_i2c_scl,
       .sda_pullup_en = GPIO_PULLUP_ENABLE,
       .scl_pullup_en = GPIO_PULLUP_ENABLE});
 
+  // initialize the audio codecs
+  logger.info("Initializing audio");
+  audio_init(internal_i2c);
+
   // initialize the USB device
   logger.info("Initializing USB");
-  usb_init();
+  // usb_init();
 
   // make a simple task that prints "Hello World!" every second
   espp::Task task({
