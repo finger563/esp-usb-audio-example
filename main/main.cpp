@@ -8,6 +8,7 @@
 #include "box_hal.hpp"
 #include "i2s_audio.hpp"
 #include "usb.hpp"
+#include "usb_audio.hpp"
 
 using namespace std::chrono_literals;
 
@@ -30,13 +31,16 @@ extern "C" void app_main(void) {
       .sda_pullup_en = GPIO_PULLUP_ENABLE,
       .scl_pullup_en = GPIO_PULLUP_ENABLE});
 
-  // initialize the audio codecs
-  logger.info("Initializing audio");
-  audio_init(internal_i2c);
+  // // initialize the audio codecs
+  // logger.info("Initializing audio");
+  // audio_init(internal_i2c);
 
   // initialize the USB device
   logger.info("Initializing USB");
-  // usb_init();
+  usb_init();
+
+  logger.info("Intializing USB Audio");
+  usb_audio_init();
 
   // make a simple task that prints "Hello World!" every second
   espp::Task task({
