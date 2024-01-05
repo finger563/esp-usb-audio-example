@@ -13,8 +13,9 @@
 #include "esp_system.h"
 #include "esp_check.h"
 
-#include "task.hpp"
 #include "event_manager.hpp"
+#include "logger.hpp"
+#include "task.hpp"
 
 #include "es7210.hpp"
 #include "es8311.hpp"
@@ -44,6 +45,8 @@ static int16_t *audio_buffer1;
 const std::string mute_button_topic = "mute/pressed";
 static std::atomic<bool> muted_{false};
 static std::atomic<int> volume_{60};
+
+static espp::Logger logger({.tag = "I2S Audio", .level = espp::Logger::Verbosity::INFO});
 
 int16_t *get_audio_buffer0() {
   return audio_buffer0;
@@ -81,9 +84,9 @@ int get_audio_volume() {
 
 static esp_err_t i2s_driver_init(void)
 {
-  fmt::print("initializing i2s driver...\n");
+  logger.info("initializing i2s driver...");
   auto ret_val = ESP_OK;
-  fmt::print("Using newer I2S standard\n");
+  logger.info("Using newer I2S standard");
   i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(i2s_port, I2S_ROLE_MASTER);
   chan_cfg.auto_clear = true; // Auto clear the legacy data in the DMA buffer
   ESP_ERROR_CHECK(i2s_new_channel(&chan_cfg, &tx_handle, &rx_handle));
@@ -116,7 +119,7 @@ static esp_err_t i2s_driver_init(void)
 // es7210 is for audio input codec
 static esp_err_t es7210_init_default(void)
 {
-  fmt::print("initializing es7210 codec...\n");
+  logger.info("initializing es7210 codec...");
   esp_err_t ret_val = ESP_OK;
   audio_hal_codec_config_t cfg;
   memset(&cfg, 0, sizeof(cfg));
@@ -133,7 +136,7 @@ static esp_err_t es7210_init_default(void)
   ret_val |= es7210_adc_ctrl_state(cfg.codec_mode, AUDIO_HAL_CTRL_START);
 
   if (ESP_OK != ret_val) {
-    fmt::print("Failed initialize codec\n");
+    logger.error("Failed to initialize es7210 (input) codec");
   }
 
   return ret_val;
@@ -142,7 +145,7 @@ static esp_err_t es7210_init_default(void)
 // es8311 is for audio output codec
 static esp_err_t es8311_init_default(void)
 {
-  fmt::print("initializing es8311 codec...\n");
+  logger.info("initializing es8311 codec...");
   esp_err_t ret_val = ESP_OK;
   audio_hal_codec_config_t cfg;
   memset(&cfg, 0, sizeof(cfg));
@@ -160,7 +163,7 @@ static esp_err_t es8311_init_default(void)
   ret_val |= es8311_codec_ctrl_state(cfg.codec_mode, AUDIO_HAL_CTRL_START);
 
   if (ESP_OK != ret_val) {
-    fmt::print("Failed initialize codec\n");
+    logger.error("Failed to initialize es8311 (output) codec");
   }
 
   return ret_val;
@@ -253,7 +256,7 @@ void audio_init(std::shared_ptr<espp::I2c> internal_i2c) {
 
   /* Checko IO config result */
   if (ESP_OK != bsp_io_config_state) {
-    fmt::print("Failed initialize power control IO\n");
+    logger.error("Failed initialize power control IO");
   }
 
   gpio_set_level(sound_power_pin, 1);
@@ -295,9 +298,9 @@ void audio_play_frame(const uint8_t *data, uint32_t num_bytes) {
   auto err = ESP_OK;
   err = i2s_channel_write(tx_handle, data, num_bytes, &bytes_written, 1000);
   if(num_bytes != bytes_written) {
-    fmt::print("ERROR to write {} != written {}\n", num_bytes, bytes_written);
+    logger.error("ERROR to write {} != written {}", num_bytes, bytes_written);
   }
   if (err != ESP_OK) {
-    fmt::print("ERROR writing i2s channel: {}, '{}'\n", err, esp_err_to_name(err));
+    logger.error("ERROR writing i2s channel: {}, '{}'", err, esp_err_to_name(err));
   }
 }
