@@ -12,10 +12,9 @@
 #include "esp_private/usb_phy.h"
 #include "soc/usb_pins.h"
 #include "tinyusb.h"
-#include "descriptors_control.h"
-#include "usb_descriptors.h"
 #include "tusb.h"
 #include "tusb_tasks.h"
+#include "descriptors_control.h"
 
 const static char *TAG = "TinyUSB";
 static usb_phy_handle_t phy_hdl;

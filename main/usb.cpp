@@ -10,37 +10,38 @@ extern "C" {
 
 static espp::Logger logger({.tag="usb", .level=espp::Logger::Verbosity::INFO});
 
+//--------------------------------------------------------------------+
+// Internal callback functions for various USB events. These are not
+// part of the public API.
+//--------------------------------------------------------------------+
+
 /* A combination of interfaces must have a unique product id, since PC will save device driver after the first plug.
  * Same VID/PID with different interface e.g MSC (first), then CDC (later) will possibly cause system error on PC.
  *
  * Auto ProductID layout's Bitmap:
- *   [MSB]  VENDOR | AUDIO | MIDI | HID | MSC | CDC [LSB]
+ *   [MSB]     AUDIO | MIDI | HID | MSC | CDC          [LSB]
  */
 #define _PID_MAP(itf, n)  ( (CFG_TUD_##itf) << (n) )
 #define USB_PID           (0x4000 | _PID_MAP(CDC, 0) | _PID_MAP(MSC, 1) | _PID_MAP(HID, 2) | \
-                           _PID_MAP(MIDI, 3) | _PID_MAP(AUDIO, 4)  | _PID_MAP(VENDOR, 5) )
-
-#define USB_VID   0xCafe
-#define USB_BCD   0x0200
+    _PID_MAP(MIDI, 3) | _PID_MAP(AUDIO, 4) | _PID_MAP(VENDOR, 5) )
 
 //--------------------------------------------------------------------+
 // Device Descriptors
 //--------------------------------------------------------------------+
-static tusb_desc_device_t desc_device =
+tusb_desc_device_t const desc_device =
 {
-  .bLength            = sizeof(tusb_desc_device_t),
+    .bLength            = sizeof(tusb_desc_device_t),
     .bDescriptorType    = TUSB_DESC_DEVICE,
-    .bcdUSB             = USB_BCD,
+    .bcdUSB             = 0x0200,
 
-    // Use Interface Association Descriptor (IAD)
+    // Use Interface Association Descriptor (IAD) for CDC
     // As required by USB Specs IAD's subclass must be common class (2) and protocol must be IAD (1)
-    .bDeviceClass = TUSB_CLASS_MISC, // 0xEF
-    .bDeviceSubClass = MISC_SUBCLASS_COMMON, //0x02
-    .bDeviceProtocol = MISC_PROTOCOL_IAD, // 0x01
-
+    .bDeviceClass       = TUSB_CLASS_MISC,
+    .bDeviceSubClass    = MISC_SUBCLASS_COMMON,
+    .bDeviceProtocol    = MISC_PROTOCOL_IAD,
     .bMaxPacketSize0    = CFG_TUD_ENDPOINT0_SIZE,
 
-    .idVendor           = USB_VID,
+    .idVendor           = 0xCafe,
     .idProduct          = USB_PID,
     .bcdDevice          = 0x0100,
 
@@ -51,51 +52,42 @@ static tusb_desc_device_t desc_device =
     .bNumConfigurations = 0x01
 };
 
-// String Descriptor Index
-enum {
-  STRID_LANGID = 0,
-  STRID_MANUFACTURER,
-  STRID_PRODUCT,
-  STRID_SERIAL,
+//--------------------------------------------------------------------+
+// Configuration Descriptor
+//--------------------------------------------------------------------+
+enum
+{
+  ITF_NUM_AUDIO_CONTROL = 0,
+  ITF_NUM_AUDIO_STREAMING,
+  ITF_NUM_TOTAL
 };
 
-const char* string_descriptor[] = {
-    // array of pointer to string descriptors
-    (char[]){0x09, 0x04},        // 0: is supported language is English (0x0409)
-    "Finger563",                 // 1: Manufacturer
-    "Finger563 USB Headset",     // 2: Product
-    "123456",                    // 3: Serials, should use chip ID
-    "USB Speakers",              // 4: Interface 1 string
-    "USB Microphone",            // 5: Interface 2 string
-};
+#define CONFIG_TOTAL_LEN    	(TUD_CONFIG_DESC_LEN + CFG_TUD_AUDIO * TUD_AUDIO_MIC_ONE_CH_DESC_LEN)
 
-//------------- USB Endpoint numbers -------------//
-enum {
-  // Endpoints 0x00 and 0x80 are for CONTROL transfers => do not use
-  // Available USB Endpoints: 5 IN/OUT EPs and 1 IN EP
-  EP_EMPTY = 0,
-  EP_AUDIO_IN = 0x01,
-  EP_AUDIO_OUT = 0x01,
-};
+#define EPNUM_AUDIO   0x01
 
-
-#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + CFG_TUD_AUDIO * TUD_AUDIO_HEADSET_STEREO_DESC_LEN)
-
-static uint8_t configuration_descriptor[] = {
-  // Config number, interface count, string index, total length, attribute, power in mA
+uint8_t const desc_configuration[] =
+{
+  // Interface count, string index, total length, attribute, power in mA
   TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0x00, 100),
+
   // Interface number, string index, EP Out & EP In address, EP size
-  TUD_AUDIO_HEADSET_STEREO_DESCRIPTOR(2, EP_AUDIO_OUT, EP_AUDIO_IN | 0x80),
+  TUD_AUDIO_MIC_ONE_CH_DESCRIPTOR(/*_itfnum*/ ITF_NUM_AUDIO_CONTROL, /*_stridx*/ 0, /*_nBytesPerSample*/ CFG_TUD_AUDIO_FUNC_1_N_BYTES_PER_SAMPLE_TX, /*_nBitsUsedPerSample*/ CFG_TUD_AUDIO_FUNC_1_N_BYTES_PER_SAMPLE_TX*8, /*_epin*/ 0x80 | EPNUM_AUDIO, /*_epsize*/ CFG_TUD_AUDIO_EP_SZ_IN)
 };
 
 //--------------------------------------------------------------------+
-// Internal callback functions for various events. These are not part
-// of the public API.
+// String Descriptors
 //--------------------------------------------------------------------+
 
-//--------------------------------------------------------------------+
-// Device callbacks
-//--------------------------------------------------------------------+
+// array of pointer to string descriptors
+char const* string_desc_arr [] =
+{
+    (const char[]) { 0x09, 0x04 }, 	// 0: is supported language is English (0x0409)
+    "PaniRCorp",                   	// 1: Manufacturer
+    "MicNode",                  		// 2: Product
+    "123456",                      	// 3: Serials, should use chip ID
+    "UAC2",                      	 	// 4: Audio Interface
+};
 
 // Invoked when device is mounted
 extern "C" void tud_mount_cb(void) {
@@ -126,26 +118,12 @@ extern "C" void tud_resume_cb(void) {
 void usb_init(void) {
   const tinyusb_config_t tusb_cfg = {
     .device_descriptor = &desc_device,
-    .string_descriptor = string_descriptor,
-    .string_descriptor_count = sizeof(string_descriptor) / sizeof(string_descriptor[0]),
+    .string_descriptor = string_desc_arr,
+    .string_descriptor_count = sizeof(string_desc_arr) / sizeof(string_desc_arr[0]),
     .external_phy = false,
-    .configuration_descriptor = configuration_descriptor,
+    .configuration_descriptor = desc_configuration,
     .self_powered = false,
     .vbus_monitor_io = 0, // ignored if not self powered
   };
   tinyusb_driver_install(&tusb_cfg);
-}
-
-void usb_set_info(uint16_t vid,
-                  uint16_t pid,
-                  uint16_t version_bcd,
-                  const std::string &manufacturer,
-                  const std::string &product,
-                  const std::string &serial) {
-  desc_device.bcdUSB = version_bcd;
-  desc_device.idVendor = vid;
-  desc_device.idProduct = pid;
-  string_descriptor[STRID_MANUFACTURER] = manufacturer.c_str();
-  string_descriptor[STRID_PRODUCT] = product.c_str();
-  string_descriptor[STRID_SERIAL] = serial.c_str();
 }

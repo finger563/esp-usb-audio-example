@@ -58,7 +58,7 @@ menu "USB Audio Configuration"
 
         config TINYUSB_INIT_IN_DEFAULT_TASK
             bool "Initialize TinyUSB stack within the default TinyUSB task"
-            default n
+            default y
             depends on !TINYUSB_NO_DEFAULT_TASK
             help
                 Run TinyUSB stack initialization just after starting the default TinyUSB task.
