@@ -35,3 +35,16 @@ See the Getting Started Guide for full steps to configure and use ESP-IDF to bui
 
 ## Output
 
+
+## Debugging
+
+### MacOS
+
+``` shell
+system_profiler SPUSBDataType
+```
+
+
+``` shell
+ioreg -p IOUSB -w0 -l
+```
