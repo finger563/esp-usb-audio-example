@@ -3,6 +3,9 @@
 This is an example for the ESP32-S3-BOX / ESP32-S3-BOX-3 to use their
 microphones and speaker as a USB audio headset.
 
+![CleanShot 2024-01-08 at 09 04 49](https://github.com/finger563/esp-usb-audio-example/assets/213467/81bbf450-f731-4dbf-bebc-ef8b0a1d6af2)
+![CleanShot 2024-01-08 at 09 05 02](https://github.com/finger563/esp-usb-audio-example/assets/213467/e3d4e1c5-d714-44b2-abe9-7d833dc5ead9)
+
 ## Cloning
 
 Since this repo contains a submodule, you need to make sure you clone it
@@ -35,6 +38,7 @@ See the Getting Started Guide for full steps to configure and use ESP-IDF to bui
 
 ## Output
 
+![CleanShot 2024-01-08 at 09 04 09](https://github.com/finger563/esp-usb-audio-example/assets/213467/404aaa16-4d92-4f99-ae2a-265623eb9d7c)
 
 ## Debugging
 
