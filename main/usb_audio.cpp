@@ -371,8 +371,12 @@ extern "C" bool tud_audio_rx_done_pre_read_cb(uint8_t rhport, uint16_t n_bytes_r
   (void)ep_out;
   (void)cur_alt_setting;
 
+  logger.debug("Audio rx done pre read");
+  // data to output to the speaker
   spk_data_size = tud_audio_read(spk_buf, n_bytes_received);
-  tud_audio_write(spk_buf, n_bytes_received);
+  // this just copies the data from the microphone to the speaker
+  // tud_audio_write(spk_buf, n_bytes_received);
+  logger.debug("Received {} bytes for speaker", spk_data_size);
 
   return true;
 }
