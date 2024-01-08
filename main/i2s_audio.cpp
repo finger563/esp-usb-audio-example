@@ -272,8 +272,20 @@ void audio_init(std::shared_ptr<espp::I2c> internal_i2c) {
                             std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 
   i2s_driver_init();
-  es7210_init_default();
-  es8311_init_default();
+  esp_err_t err = ESP_OK;
+  err = es7210_init_default();
+  if (err != ESP_OK) {
+    logger.error("ERROR initializing ES7210 audio: {}", err);
+    // TODO: we're not returning here because we want to continue to try to
+    // initialize the es8311 codec. We should probably return here and not
+    // continue if we can't initialize the es7210 codec, since that means we
+    // can't record audio.
+  }
+  err = es8311_init_default();
+  if (err != ESP_OK) {
+    logger.error("ERROR initializing ES8311 audio: {}", err);
+    return;
+  }
 
   audio_buffer0 = (int16_t*)heap_caps_malloc(sizeof(int16_t) * AUDIO_BUFFER_SIZE + 10, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
   audio_buffer1 = (int16_t*)heap_caps_malloc(sizeof(int16_t) * AUDIO_BUFFER_SIZE + 10, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
@@ -294,6 +306,13 @@ void audio_deinit() {
 }
 
 void audio_play_frame(const uint8_t *data, uint32_t num_bytes) {
+  if (!initialized) {
+    return;
+  }
+  if (tx_handle == NULL) {
+    logger.error("ERROR: tx_handle is NULL");
+    return;
+  }
   size_t bytes_written = 0;
   auto err = ESP_OK;
   err = i2s_channel_write(tx_handle, data, num_bytes, &bytes_written, 1000);

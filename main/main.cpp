@@ -32,8 +32,8 @@ extern "C" void app_main(void) {
       .scl_pullup_en = GPIO_PULLUP_ENABLE});
 
   // // initialize the audio codecs
-  // logger.info("Initializing audio");
-  // audio_init(internal_i2c);
+  logger.info("Initializing audio");
+  audio_init(internal_i2c);
 
   // initialize the USB device
   logger.info("Initializing USB");
