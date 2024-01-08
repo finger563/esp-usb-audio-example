@@ -242,6 +242,32 @@ static bool initialized = false;
 void audio_init(std::shared_ptr<espp::I2c> internal_i2c) {
   if (initialized) return;
 
+  // probe the I2C bus to see if the codec is there
+  logger.info("Probing I2C bus");
+  bool found_es7210 = false;
+  auto es7210_addresses = {ES7210_AD1_AD0_00, ES7210_AD1_AD0_01, ES7210_AD1_AD0_10, ES7210_AD1_AD0_11};
+  for (const auto address : es7210_addresses) {
+    if (internal_i2c->probe_device(address)) {
+      logger.info("Found ES7210 at address 0x{:02x}", (uint8_t)address);
+      found_es7210 = true;
+      break;
+    }
+  }
+  auto es8311_addresses = {0x18};
+  bool found_es8311 = false;
+  for (const auto address : es8311_addresses) {
+    if (internal_i2c->probe_device(address)) {
+      logger.info("Found ES8311 at address 0x{:02x}", (uint8_t)address);
+      found_es8311 = true;
+      break;
+    }
+  }
+
+  if (!found_es7210 || !found_es8311) {
+    logger.error("Could not find one of the codecs: ES7210={}, ES8311={}", found_es7210, found_es8311);
+    return;
+  }
+
   /* Config power control IO */
   static esp_err_t bsp_io_config_state = ESP_FAIL;
   if (ESP_OK != bsp_io_config_state) {
