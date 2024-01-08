@@ -1,4 +1,5 @@
 #include "usb.hpp"
+#include "usb_audio.hpp"
 
 extern "C" {
 #include <tusb.h>
@@ -44,8 +45,8 @@ static uint16_t test_buffer_audio[CFG_TUD_AUDIO_EP_SZ_IN/2];
 static uint16_t startVal = 0;
 
 // List of supported sample rates
-const uint32_t sample_rates[] = {44100, 48000};
-uint32_t current_sample_rate  = 44100;
+const uint32_t sample_rates[] = {AUDIO_SAMPLE_RATE};
+uint32_t current_sample_rate  = AUDIO_SAMPLE_RATE;
 
 #define N_SAMPLE_RATES  TU_ARRAY_SIZE(sample_rates)
 
@@ -377,6 +378,8 @@ extern "C" bool tud_audio_rx_done_pre_read_cb(uint8_t rhport, uint16_t n_bytes_r
   // this just copies the data from the microphone to the speaker
   // tud_audio_write(spk_buf, n_bytes_received);
   logger.debug("Received {} bytes for speaker", spk_data_size);
+  // play the audio using the I2S peripheral
+  audio_play_frame((uint8_t *)spk_buf, spk_data_size);
 
   return true;
 }
