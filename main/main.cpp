@@ -31,11 +31,12 @@ extern "C" void app_main(void) {
       .sda_pullup_en = GPIO_PULLUP_ENABLE,
       .scl_pullup_en = GPIO_PULLUP_ENABLE});
 
-  // // initialize the audio codecs
   logger.info("Initializing audio");
   audio_init(internal_i2c);
 
-  // initialize the USB device
+  // set the volume to 60%
+  set_audio_volume(60);
+
   logger.info("Initializing USB");
   usb_init();
 

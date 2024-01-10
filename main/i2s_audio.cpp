@@ -34,7 +34,6 @@ using namespace box_hal;
 /* Example configurations */
 #define EXAMPLE_MCLK_MULTIPLE   (I2S_MCLK_MULTIPLE_256) // If not using 24-bit data width, 256 should be enough
 #define EXAMPLE_MCLK_FREQ_HZ    (AUDIO_SAMPLE_RATE * EXAMPLE_MCLK_MULTIPLE)
-#define EXAMPLE_VOLUME          (60) // percent
 
 static i2s_chan_handle_t tx_handle = NULL;
 static i2s_chan_handle_t rx_handle = NULL;
@@ -128,7 +127,7 @@ static esp_err_t es7210_init_default(void)
   cfg.i2s_iface.bits = AUDIO_HAL_BIT_LENGTH_16BITS;
   cfg.i2s_iface.fmt = AUDIO_HAL_I2S_NORMAL;
   cfg.i2s_iface.mode = AUDIO_HAL_MODE_SLAVE;
-  cfg.i2s_iface.samples = AUDIO_HAL_16K_SAMPLES;
+  cfg.i2s_iface.samples = AUDIO_HAL_44K_SAMPLES;
   ret_val |= es7210_adc_init(&cfg);
   ret_val |= es7210_adc_config_i2s(cfg.codec_mode, &cfg.i2s_iface);
   ret_val |= es7210_adc_set_gain((es7210_input_mics_t)(ES7210_INPUT_MIC1 | ES7210_INPUT_MIC2), GAIN_37_5DB);
@@ -154,12 +153,12 @@ static esp_err_t es8311_init_default(void)
   cfg.i2s_iface.bits = AUDIO_HAL_BIT_LENGTH_16BITS;
   cfg.i2s_iface.fmt = AUDIO_HAL_I2S_NORMAL;
   cfg.i2s_iface.mode = AUDIO_HAL_MODE_SLAVE;
-  cfg.i2s_iface.samples = AUDIO_HAL_16K_SAMPLES;
+  cfg.i2s_iface.samples = AUDIO_HAL_44K_SAMPLES;
 
   ret_val |= es8311_codec_init(&cfg);
   ret_val |= es8311_set_bits_per_sample(cfg.i2s_iface.bits);
   ret_val |= es8311_config_fmt((es_i2s_fmt_t)cfg.i2s_iface.fmt);
-  ret_val |= es8311_codec_set_voice_volume(EXAMPLE_VOLUME);
+  ret_val |= es8311_codec_set_voice_volume(volume_);
   ret_val |= es8311_codec_ctrl_state(cfg.codec_mode, AUDIO_HAL_CTRL_START);
 
   if (ESP_OK != ret_val) {
@@ -302,10 +301,7 @@ void audio_init(std::shared_ptr<espp::I2c> internal_i2c) {
   err = es7210_init_default();
   if (err != ESP_OK) {
     logger.error("ERROR initializing ES7210 audio: {}", err);
-    // TODO: we're not returning here because we want to continue to try to
-    // initialize the es8311 codec. We should probably return here and not
-    // continue if we can't initialize the es7210 codec, since that means we
-    // can't record audio.
+    return;
   }
   err = es8311_init_default();
   if (err != ESP_OK) {
@@ -339,13 +335,40 @@ void audio_play_frame(const uint8_t *data, uint32_t num_bytes) {
     logger.error("ERROR: tx_handle is NULL");
     return;
   }
+  if (data == NULL) {
+    logger.error("ERROR: data is NULL");
+    return;
+  }
   size_t bytes_written = 0;
   auto err = ESP_OK;
-  err = i2s_channel_write(tx_handle, data, num_bytes, &bytes_written, 1000);
+  err = i2s_channel_write(tx_handle, data, num_bytes, &bytes_written, 10);
   if(num_bytes != bytes_written) {
     logger.error("ERROR to write {} != written {}", num_bytes, bytes_written);
   }
   if (err != ESP_OK) {
     logger.error("ERROR writing i2s channel: {}, '{}'", err, esp_err_to_name(err));
+  }
+}
+
+void audio_record_frame(uint8_t *data, uint32_t num_bytes) {
+  if (!initialized) {
+    return;
+  }
+  if (rx_handle == NULL) {
+    logger.error("ERROR: rx_handle is NULL");
+    return;
+  }
+  if (data == NULL) {
+    logger.error("ERROR: data is NULL");
+    return;
+  }
+  size_t bytes_read = 0;
+  auto err = ESP_OK;
+  err = i2s_channel_read(rx_handle, data, num_bytes, &bytes_read, 10);
+  if(num_bytes != bytes_read) {
+    // logger.error("ERROR to read {} != read {}", num_bytes, bytes_read);
+  }
+  if (err != ESP_OK) {
+    // logger.error("ERROR reading i2s channel: {}, '{}'", err, esp_err_to_name(err));
   }
 }
