@@ -16,6 +16,8 @@ int16_t* get_audio_buffer1();
 void audio_play_frame(const uint8_t *data, uint32_t num_bytes);
 void audio_record_frame(uint8_t *data, uint32_t num_bytes);
 
+size_t get_audio_input_size();
+
 bool is_muted();
 void set_muted(bool mute);
 

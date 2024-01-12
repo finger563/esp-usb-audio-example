@@ -59,6 +59,12 @@ int16_t *get_audio_buffer1() {
   return audio_buffer1;
 }
 
+static size_t audio_input_size = 0;
+
+size_t get_audio_input_size() {
+  return audio_input_size;
+}
+
 void update_volume_output() {
   if (muted_) {
     es8311_codec_set_voice_volume(0);
@@ -120,19 +126,19 @@ static esp_err_t i2s_driver_init(void)
     // buffer that was just filled
     uint8_t *data = (uint8_t*)event->data;
     // number of bytes in the buffer
-    size_t bytes_read = event->size;
-    if (bytes_read > 0) {
-      tud_audio_write(data, bytes_read / 2);
+    audio_input_size = event->size;
+    if (audio_input_size > 0) {
+      // memcpy(audio_buffer0, data, audio_input_size);
+      tud_audio_write(data, audio_input_size / 2);
     }
     return false;
   };
 
-  ret_val = i2s_channel_register_event_callback(rx_handle, &rx_callbacks, NULL);
-
-  if (ret_val != ESP_OK) {
-    logger.error("ERROR registering i2s event callback: {}", ret_val);
-    return ret_val;
-  }
+  // ret_val = i2s_channel_register_event_callback(rx_handle, &rx_callbacks, NULL);
+  // if (ret_val != ESP_OK) {
+  //   logger.error("ERROR registering i2s event callback: {}", ret_val);
+  //   return ret_val;
+  // }
 
   ESP_ERROR_CHECK(i2s_channel_enable(tx_handle));
   ESP_ERROR_CHECK(i2s_channel_enable(rx_handle));
@@ -151,11 +157,11 @@ static esp_err_t es7210_init_default(void)
   cfg.i2s_iface.bits = AUDIO_HAL_BIT_LENGTH_16BITS;
   cfg.i2s_iface.fmt = AUDIO_HAL_I2S_NORMAL;
   cfg.i2s_iface.mode = AUDIO_HAL_MODE_SLAVE;
-  cfg.i2s_iface.samples = AUDIO_HAL_16K_SAMPLES;
+  cfg.i2s_iface.samples = AUDIO_HAL_48K_SAMPLES;
   ret_val |= es7210_adc_init(&cfg);
   ret_val |= es7210_adc_config_i2s(cfg.codec_mode, &cfg.i2s_iface);
-  ret_val |= es7210_adc_set_gain((es7210_input_mics_t)(ES7210_INPUT_MIC1 | ES7210_INPUT_MIC2), GAIN_24DB);
-  ret_val |= es7210_adc_set_gain((es7210_input_mics_t)(ES7210_INPUT_MIC3 | ES7210_INPUT_MIC4), GAIN_24DB);
+  ret_val |= es7210_adc_set_gain((es7210_input_mics_t)(ES7210_INPUT_MIC1 | ES7210_INPUT_MIC2), GAIN_37_5DB);
+  ret_val |= es7210_adc_set_gain((es7210_input_mics_t)(ES7210_INPUT_MIC3 | ES7210_INPUT_MIC4), GAIN_0DB);
   ret_val |= es7210_adc_ctrl_state(cfg.codec_mode, AUDIO_HAL_CTRL_START);
 
   if (ESP_OK != ret_val) {
