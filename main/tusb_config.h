@@ -1,5 +1,7 @@
 #pragma once
 
+#include "audio_config.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -41,7 +43,7 @@ extern "C" {
 #define CFG_TUD_AUDIO_FUNC_1_N_FORMATS                               2
 
 // Audio format type I specifications
-#define CFG_TUD_AUDIO_FUNC_1_MAX_SAMPLE_RATE                         48000     // 16bit/48kHz is the best quality for Renesas RX
+#define CFG_TUD_AUDIO_FUNC_1_MAX_SAMPLE_RATE                         AUDIO_SAMPLE_RATE
 #define CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX                           1
 #define CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_RX                           1         // Changed
 
@@ -85,7 +87,7 @@ extern "C" {
 
 #define CFG_TUD_AUDIO_FUNC_1_N_BYTES_PER_SAMPLE_TX                    2                                       // Driver gets this info from the descriptors - we define it here to use it to setup the descriptors and to do calculations with it below
 #define CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX                            1                                       // Driver gets this info from the descriptors - we define it here to use it to setup the descriptors and to do calculations with it below - be aware: for different number of channels you need another descriptor!
-#define CFG_TUD_AUDIO_EP_SZ_IN                                        48 * CFG_TUD_AUDIO_FUNC_1_N_BYTES_PER_SAMPLE_TX * CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX      // 48 Samples (48 kHz) x 2 Bytes/Sample x 1 Channel
+#define CFG_TUD_AUDIO_EP_SZ_IN                                        ((CFG_TUD_AUDIO_FUNC_1_MAX_SAMPLE_RATE / 1000) * CFG_TUD_AUDIO_FUNC_1_N_BYTES_PER_SAMPLE_TX * CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX)
 
 // Number of Standard AS Interface Descriptors (4.9.1) defined per audio function - this is required to be able to remember the current alternate settings of these interfaces - We restrict us here to have a constant number for all audio functions (which means this has to be the maximum number of AS interfaces an audio function has and a second audio function with less AS interfaces just wastes a few bytes)
 #define CFG_TUD_AUDIO_FUNC_1_N_AS_INT 	          2

@@ -66,6 +66,8 @@ extern "C" void app_main(void) {
         // std::unique_lock<std::mutex> lock(m);
         // cv.wait_for(lock, 1s);
 
+        // usb_audio_record();
+
         // we don't want to stop the task, so return false
         return false;
       },

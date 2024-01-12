@@ -157,7 +157,15 @@ static esp_err_t es7210_init_default(void)
   cfg.i2s_iface.bits = AUDIO_HAL_BIT_LENGTH_16BITS;
   cfg.i2s_iface.fmt = AUDIO_HAL_I2S_NORMAL;
   cfg.i2s_iface.mode = AUDIO_HAL_MODE_SLAVE;
+#if AUDIO_SAMPLE_RATE == 48000
   cfg.i2s_iface.samples = AUDIO_HAL_48K_SAMPLES;
+#elif AUDIO_SAMPLE_RATE == 44100
+  cfg.i2s_iface.samples = AUDIO_HAL_44K_SAMPLES;
+#elif AUDIO_SAMPLE_RATE == 16000
+  cfg.i2s_iface.samples = AUDIO_HAL_16K_SAMPLES;
+#else
+#error "Unsupported sample rate"
+#endif
   ret_val |= es7210_adc_init(&cfg);
   ret_val |= es7210_adc_config_i2s(cfg.codec_mode, &cfg.i2s_iface);
   ret_val |= es7210_adc_set_gain((es7210_input_mics_t)(ES7210_INPUT_MIC1 | ES7210_INPUT_MIC2), GAIN_37_5DB);
@@ -183,7 +191,15 @@ static esp_err_t es8311_init_default(void)
   cfg.i2s_iface.bits = AUDIO_HAL_BIT_LENGTH_16BITS;
   cfg.i2s_iface.fmt = AUDIO_HAL_I2S_NORMAL;
   cfg.i2s_iface.mode = AUDIO_HAL_MODE_SLAVE;
+#if AUDIO_SAMPLE_RATE == 48000
   cfg.i2s_iface.samples = AUDIO_HAL_48K_SAMPLES;
+#elif AUDIO_SAMPLE_RATE == 44100
+  cfg.i2s_iface.samples = AUDIO_HAL_44K_SAMPLES;
+#elif AUDIO_SAMPLE_RATE == 16000
+  cfg.i2s_iface.samples = AUDIO_HAL_16K_SAMPLES;
+#else
+#error "Unsupported sample rate"
+#endif
 
   ret_val |= es8311_codec_init(&cfg);
   ret_val |= es8311_set_bits_per_sample(cfg.i2s_iface.bits);
@@ -380,17 +396,17 @@ void audio_play_frame(const uint8_t *data, uint32_t num_bytes) {
   }
 }
 
-void audio_record_frame(uint8_t *data, uint32_t num_bytes) {
+uint32_t audio_record_frame(uint8_t *data, uint32_t num_bytes) {
   if (!initialized) {
-    return;
+    return 0;
   }
   if (rx_handle == NULL) {
     logger.error("ERROR: rx_handle is NULL");
-    return;
+    return 0;
   }
   if (data == NULL) {
     logger.error("ERROR: data is NULL");
-    return;
+    return 0;
   }
   size_t bytes_read = 0;
   auto err = ESP_OK;
@@ -401,4 +417,5 @@ void audio_record_frame(uint8_t *data, uint32_t num_bytes) {
   if (err != ESP_OK) {
     // logger.error("ERROR reading i2s channel: {}, '{}'", err, esp_err_to_name(err));
   }
+  return bytes_read;
 }
