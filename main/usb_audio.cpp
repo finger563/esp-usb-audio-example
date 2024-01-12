@@ -48,8 +48,9 @@ uint32_t current_sample_rate  = AUDIO_SAMPLE_RATE;
 // static int16_t volume[CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_RX + 1];    // +1 for master channel 0
 
 // Buffer for microphone data
-// static int32_t mic_buf[CFG_TUD_AUDIO_FUNC_1_EP_IN_SW_BUF_SZ / 4];
-static int16_t *mic_buf = nullptr;
+static int16_t mic_buf[CFG_TUD_AUDIO_EP_SZ_IN];
+// static int16_t *mic_buf = nullptr;
+static int mic_buf_idx = 0;
 // Buffer for speaker data
 static int32_t spk_buf[CFG_TUD_AUDIO_FUNC_1_EP_OUT_SW_BUF_SZ / 4];
 // Speaker data size received in the last frame
@@ -69,7 +70,7 @@ void usb_audio_init() {
   sampFreq = AUDIO_SAMPLE_RATE;
   clkValid = 1;
 
-  mic_buf = get_audio_buffer0();
+  // mic_buf = get_audio_buffer0();
 
   sampleFreqRng.wNumSubRanges = 1;
   sampleFreqRng.subrange[0].bMin = AUDIO_SAMPLE_RATE;
@@ -356,8 +357,9 @@ extern "C" bool tud_audio_tx_done_pre_load_cb(uint8_t rhport, uint8_t itf, uint8
   logger.debug("Audio tx done pre load");
 
   // tud_audio_write((uint8_t*)mic_buf, AUDIO_SAMPLE_RATE/1000 * CFG_TUD_AUDIO_FUNC_1_N_BYTES_PER_SAMPLE_TX * CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX);
-  // tud_audio_write((uint8_t*)mic_buf, CFG_TUD_AUDIO_EP_SZ_IN*2);
-  tud_audio_write((uint8_t*)mic_buf, AUDIO_SAMPLE_RATE / 1000 * 2);
+  // tud_audio_write((uint8_t*)mic_buf, CFG_TUD_AUDIO_EP_SZ_IN * 2);
+  // tud_audio_write((uint8_t*)mic_buf, AUDIO_SAMPLE_RATE / 1000 * 2);
+  // tud_audio_write((uint8_t*)get_audio_buffer0(), AUDIO_SAMPLE_RATE / 1000 * 2);
 
   return true;
 }
@@ -391,12 +393,16 @@ extern "C" bool tud_audio_tx_done_post_load_cb(uint8_t rhport, uint16_t n_bytes_
 
   logger.debug("Audio tx done post load");
 
+  // ping pong the audio buffers
+  // mic_buf_idx = (mic_buf_idx + 1) % 2;
+  // mic_buf = mic_buf_idx == 0 ? get_audio_buffer0() : get_audio_buffer1();
+
   // get the audio data from the microphone. NOTE: we don't have to use
   // CFG_TUD_AUDIO_EP_SZ_IN/2 here because we are using 16-bit samples but the
   // size is in bytes
-  // audio_record_frame((uint8_t *)mic_buf, AUDIO_SAMPLE_RATE/1000 * CFG_TUD_AUDIO_FUNC_1_N_BYTES_PER_SAMPLE_TX * CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX); // CFG_TUD_AUDIO_FUNC_1_EP_IN_SW_BUF_SZ/4); // CFG_TUD_AUDIO_EP_SZ_IN);
+  // audio_record_frame((uint8_t *)mic_buf, AUDIO_SAMPLE_RATE/1000 * CFG_TUD_AUDIO_FUNC_1_N_BYTES_PER_SAMPLE_TX * CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX);
   // audio_record_frame((uint8_t *)mic_buf, CFG_TUD_AUDIO_EP_SZ_IN * 2);
-  audio_record_frame((uint8_t *)mic_buf, AUDIO_SAMPLE_RATE / 1000 * 2);
+  // audio_record_frame((uint8_t *)mic_buf, AUDIO_SAMPLE_RATE / 1000 * 2);
 
   return true;
 }

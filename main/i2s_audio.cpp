@@ -1,5 +1,9 @@
 #include "i2s_audio.hpp"
 
+extern "C" {
+#include <tusb.h>
+}
+
 #include <atomic>
 #include <stdio.h>
 #include <string.h>
@@ -110,6 +114,26 @@ static esp_err_t i2s_driver_init(void)
 
   ESP_ERROR_CHECK(i2s_channel_init_std_mode(tx_handle, &std_cfg));
   ESP_ERROR_CHECK(i2s_channel_init_std_mode(rx_handle, &std_cfg));
+
+  static i2s_event_callbacks_t rx_callbacks;
+  rx_callbacks.on_recv = [](i2s_chan_handle_t handle, i2s_event_data_t *event, void *user_ctx) -> bool {
+    // buffer that was just filled
+    uint8_t *data = (uint8_t*)event->data;
+    // number of bytes in the buffer
+    size_t bytes_read = event->size;
+    if (bytes_read > 0) {
+      tud_audio_write(data, bytes_read / 2);
+    }
+    return false;
+  };
+
+  ret_val = i2s_channel_register_event_callback(rx_handle, &rx_callbacks, NULL);
+
+  if (ret_val != ESP_OK) {
+    logger.error("ERROR registering i2s event callback: {}", ret_val);
+    return ret_val;
+  }
+
   ESP_ERROR_CHECK(i2s_channel_enable(tx_handle));
   ESP_ERROR_CHECK(i2s_channel_enable(rx_handle));
   return ret_val;
@@ -127,11 +151,11 @@ static esp_err_t es7210_init_default(void)
   cfg.i2s_iface.bits = AUDIO_HAL_BIT_LENGTH_16BITS;
   cfg.i2s_iface.fmt = AUDIO_HAL_I2S_NORMAL;
   cfg.i2s_iface.mode = AUDIO_HAL_MODE_SLAVE;
-  cfg.i2s_iface.samples = AUDIO_HAL_44K_SAMPLES;
+  cfg.i2s_iface.samples = AUDIO_HAL_16K_SAMPLES;
   ret_val |= es7210_adc_init(&cfg);
   ret_val |= es7210_adc_config_i2s(cfg.codec_mode, &cfg.i2s_iface);
-  ret_val |= es7210_adc_set_gain((es7210_input_mics_t)(ES7210_INPUT_MIC1 | ES7210_INPUT_MIC2), GAIN_37_5DB);
-  ret_val |= es7210_adc_set_gain((es7210_input_mics_t)(ES7210_INPUT_MIC3 | ES7210_INPUT_MIC4), GAIN_0DB);
+  ret_val |= es7210_adc_set_gain((es7210_input_mics_t)(ES7210_INPUT_MIC1 | ES7210_INPUT_MIC2), GAIN_24DB);
+  ret_val |= es7210_adc_set_gain((es7210_input_mics_t)(ES7210_INPUT_MIC3 | ES7210_INPUT_MIC4), GAIN_24DB);
   ret_val |= es7210_adc_ctrl_state(cfg.codec_mode, AUDIO_HAL_CTRL_START);
 
   if (ESP_OK != ret_val) {
@@ -153,7 +177,7 @@ static esp_err_t es8311_init_default(void)
   cfg.i2s_iface.bits = AUDIO_HAL_BIT_LENGTH_16BITS;
   cfg.i2s_iface.fmt = AUDIO_HAL_I2S_NORMAL;
   cfg.i2s_iface.mode = AUDIO_HAL_MODE_SLAVE;
-  cfg.i2s_iface.samples = AUDIO_HAL_44K_SAMPLES;
+  cfg.i2s_iface.samples = AUDIO_HAL_48K_SAMPLES;
 
   ret_val |= es8311_codec_init(&cfg);
   ret_val |= es8311_set_bits_per_sample(cfg.i2s_iface.bits);
@@ -341,7 +365,7 @@ void audio_play_frame(const uint8_t *data, uint32_t num_bytes) {
   }
   size_t bytes_written = 0;
   auto err = ESP_OK;
-  err = i2s_channel_write(tx_handle, data, num_bytes, &bytes_written, 10);
+  err = i2s_channel_write(tx_handle, data, num_bytes, &bytes_written, 100);
   if(num_bytes != bytes_written) {
     logger.error("ERROR to write {} != written {}", num_bytes, bytes_written);
   }
@@ -364,7 +388,7 @@ void audio_record_frame(uint8_t *data, uint32_t num_bytes) {
   }
   size_t bytes_read = 0;
   auto err = ESP_OK;
-  err = i2s_channel_read(rx_handle, data, num_bytes, &bytes_read, 10);
+  err = i2s_channel_read(rx_handle, data, num_bytes, &bytes_read, 100);
   if(num_bytes != bytes_read) {
     // logger.error("ERROR to read {} != read {}", num_bytes, bytes_read);
   }
