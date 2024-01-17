@@ -50,7 +50,7 @@ static i2s_chan_handle_t rx_handle = NULL;
 static int16_t *audio_buffer0;
 static int16_t *audio_buffer1;
 
-static std::atomic<int> volume_{60};
+static std::atomic<int> volume_{100};
 
 static espp::Logger logger({.tag = "I2S Audio", .level = espp::Logger::Verbosity::INFO});
 
@@ -100,8 +100,8 @@ static esp_err_t i2s_driver_init(void)
       .mclk = i2s_mck_io,
       .bclk = i2s_bck_io,
       .ws = i2s_ws_io,
-      .dout = i2s_do_io,
-      .din = i2s_di_io,
+      .dout = i2s_do_io, // connect to DSDIN
+      .din = i2s_di_io,  // connect to ASDOUT
       .invert_flags = {
         .mclk_inv = false,
         .bclk_inv = false,
@@ -228,16 +228,17 @@ static esp_err_t es8388_init_default(void) {
   // es8388_codec_cfg.ctrl_if = i2c_ctrl_if;
   // es8388_codec_new(&es8388_codec_cfg);
 
+  // see esp-adf/components/audio_board/lyrat_v4_2/board_def.h
+
   logger.info("initializing es8388 codec...");
   esp_err_t ret_val = ESP_OK;
   audio_hal_codec_config_t cfg;
   memset(&cfg, 0, sizeof(cfg));
-  cfg.codec_mode = AUDIO_HAL_CODEC_MODE_BOTH;
-  cfg.adc_input = AUDIO_HAL_ADC_INPUT_ALL;
+  cfg.adc_input = AUDIO_HAL_ADC_INPUT_LINE1;
   cfg.dac_output = AUDIO_HAL_DAC_OUTPUT_ALL;
-  cfg.i2s_iface.bits = AUDIO_HAL_BIT_LENGTH_16BITS;
-  cfg.i2s_iface.fmt = AUDIO_HAL_I2S_NORMAL;
+  cfg.codec_mode = AUDIO_HAL_CODEC_MODE_BOTH;
   cfg.i2s_iface.mode = AUDIO_HAL_MODE_SLAVE;
+  cfg.i2s_iface.fmt = AUDIO_HAL_I2S_NORMAL;
 #if AUDIO_SAMPLE_RATE == 48000
   cfg.i2s_iface.samples = AUDIO_HAL_48K_SAMPLES;
 #elif AUDIO_SAMPLE_RATE == 44100
@@ -247,6 +248,7 @@ static esp_err_t es8388_init_default(void) {
 #else
 #error "Unsupported sample rate"
 #endif
+  cfg.i2s_iface.bits = AUDIO_HAL_BIT_LENGTH_16BITS;
 
   ret_val |= es8388_init(&cfg);
   ret_val |= es8388_config_i2s(cfg.codec_mode, &cfg.i2s_iface);
