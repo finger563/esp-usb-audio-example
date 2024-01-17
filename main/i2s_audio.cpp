@@ -253,11 +253,10 @@ static esp_err_t es8388_init_default(void) {
   ret_val |= es8388_init(&cfg);
   ret_val |= es8388_config_i2s(cfg.codec_mode, &cfg.i2s_iface);
   ret_val |= es8388_set_bits_per_sample(ES_MODULE_ADC_DAC, BIT_LENGTH_16BITS);
-  ret_val |= es8388_config_fmt(ES_MODULE_ADC_DAC, (es_i2s_fmt_t)cfg.i2s_iface.fmt);
+  // ret_val |= es8388_config_fmt(ES_MODULE_ADC_DAC, (es_i2s_fmt_t)cfg.i2s_iface.fmt);
   ret_val |= es8388_set_voice_volume(volume_);
   ret_val |= es8388_set_mic_gain(MIC_GAIN_24DB);
   ret_val |= es8388_ctrl_state(cfg.codec_mode, AUDIO_HAL_CTRL_START);
-  ret_val |= es8388_start(ES_MODULE_ADC_DAC);
 
   if (ESP_OK != ret_val) {
     logger.error("Failed to initialize es8388 (input/output) codec");
