@@ -25,6 +25,14 @@
 #ifndef __ES8388_H__
 #define __ES8388_H__
 
+#include <functional>
+
+typedef std::function<bool(uint8_t, uint8_t*, size_t)> write_fn;
+typedef std::function<bool(uint8_t, uint8_t, uint8_t*, size_t)> read_register_fn;
+
+void set_es8388_write(write_fn fn);
+void set_es8388_read(read_register_fn fn);
+
 #include "esp_types.h"
 #include "esp_err.h"
 #include "audio_hal.h"
@@ -36,7 +44,10 @@ extern "C" {
 #endif
 
 /* ES8388 address */
-#define ES8388_ADDR 0x20  /*!< 0x22:CE=1;0x20:CE=0*/
+// #define ES8388_ADDR 0x20  /*!< 0x22:CE=1;0x20:CE=0*/
+#define ES8388_ADDR 0x10  /*!< 0x12:CE=1;0x10:CE=0*/
+#define ES8388_ADDR_CE0 0x10
+#define ES8388_ADDR_CE1 0x12
 
 /* ES8388 register */
 #define ES8388_CONTROL1         0x00

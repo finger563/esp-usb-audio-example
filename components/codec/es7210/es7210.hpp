@@ -248,7 +248,7 @@ esp_err_t es7210_mic_select(es7210_input_mics_t mic);
  *     - ESP_FAIL
  *     - ESP_OK
  */
-int es7210_read_reg(uint8_t reg_addr);
+uint8_t es7210_read_reg(uint8_t reg_addr);
 
 /**
  * @brief Read all regs of ES7210

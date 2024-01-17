@@ -360,11 +360,11 @@ extern "C" bool tud_audio_tx_done_pre_load_cb(uint8_t rhport, uint8_t itf, uint8
   // tud_audio_write((uint8_t*)get_audio_buffer0(), AUDIO_SAMPLE_RATE / 1000 * 2);
   // tud_audio_write((uint8_t*)mic_buf, CFG_TUD_AUDIO_FUNC_1_EP_IN_SW_BUF_SZ);
 
-// if (num_mic_bytes)
-  //   tud_audio_write((uint8_t*)mic_buf, num_mic_bytes);
+  if (num_mic_bytes)
+    tud_audio_write((uint8_t*)mic_buf, num_mic_bytes);
 
-  // output the mic data back to the computer via usb
-  tud_audio_write((uint8_t *)mic_buf, spk_data_size);
+  // // output the mic data back to the computer via usb
+  // tud_audio_write((uint8_t *)mic_buf, spk_data_size);
 
   return true;
 }
@@ -384,8 +384,10 @@ extern "C" bool tud_audio_rx_done_pre_read_cb(uint8_t rhport, uint16_t n_bytes_r
   logger.debug("Received {} bytes for speaker", spk_data_size);
   // play the audio using the I2S peripheral
   audio_play_frame((uint8_t *)spk_buf, spk_data_size);
-  // copy the data from the speaker buffer to the microphone buffer
-  memcpy(mic_buf, spk_buf, spk_data_size);
+
+  // // copy the data from the speaker buffer to the microphone buffer
+  // memcpy(mic_buf, spk_buf, spk_data_size);
+
   return true;
 }
 
