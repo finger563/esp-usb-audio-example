@@ -249,11 +249,13 @@ static esp_err_t es8388_init_default(void) {
 #endif
 
   ret_val |= es8388_init(&cfg);
+  ret_val |= es8388_config_i2s(cfg.codec_mode, &cfg.i2s_iface);
   ret_val |= es8388_set_bits_per_sample(ES_MODULE_ADC_DAC, BIT_LENGTH_16BITS);
   ret_val |= es8388_config_fmt(ES_MODULE_ADC_DAC, (es_i2s_fmt_t)cfg.i2s_iface.fmt);
   ret_val |= es8388_set_voice_volume(volume_);
   ret_val |= es8388_set_mic_gain(MIC_GAIN_24DB);
   ret_val |= es8388_ctrl_state(cfg.codec_mode, AUDIO_HAL_CTRL_START);
+  ret_val |= es8388_start(ES_MODULE_ADC_DAC);
 
   if (ESP_OK != ret_val) {
     logger.error("Failed to initialize es8388 (input/output) codec");
@@ -375,10 +377,10 @@ uint32_t audio_record_frame(uint8_t *data, uint32_t num_bytes) {
   auto err = ESP_OK;
   err = i2s_channel_read(rx_handle, data, num_bytes, &bytes_read, 100);
   if(num_bytes != bytes_read) {
-    // logger.error("ERROR to read {} != read {}", num_bytes, bytes_read);
+    logger.error("ERROR to read {} != read {}", num_bytes, bytes_read);
   }
   if (err != ESP_OK) {
-    // logger.error("ERROR reading i2s channel: {}, '{}'", err, esp_err_to_name(err));
+    logger.error("ERROR reading i2s channel: {}, '{}'", err, esp_err_to_name(err));
   }
   return bytes_read;
 }
