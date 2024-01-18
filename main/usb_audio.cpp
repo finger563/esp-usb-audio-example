@@ -5,10 +5,6 @@ extern "C" {
 #include <tusb.h>
 }
 
-#ifndef AUDIO_SAMPLE_RATE
-#define AUDIO_SAMPLE_RATE   48000
-#endif
-
 #include "logger.hpp"
 
 static espp::Logger logger({.tag="usb", .level=espp::Logger::Verbosity::INFO});
@@ -40,10 +36,6 @@ static uint8_t clkValid;
 audio_control_range_2_n_t(1) volumeRng[CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX+1]; 			// Volume range state
 audio_control_range_4_n_t(1) sampleFreqRng; 						// Sample frequency range state
 
-// Audio test data
-static uint16_t test_buffer_audio[CFG_TUD_AUDIO_EP_SZ_IN/2];
-static uint16_t startVal = 0;
-
 // List of supported sample rates
 const uint32_t sample_rates[] = {AUDIO_SAMPLE_RATE};
 uint32_t current_sample_rate  = AUDIO_SAMPLE_RATE;
@@ -56,7 +48,7 @@ uint32_t current_sample_rate  = AUDIO_SAMPLE_RATE;
 // static int16_t volume[CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_RX + 1];    // +1 for master channel 0
 
 // Buffer for microphone data
-static int32_t mic_buf[CFG_TUD_AUDIO_FUNC_1_EP_IN_SW_BUF_SZ / 4];
+static int16_t mic_buf[CFG_TUD_AUDIO_EP_SZ_IN / 2];
 // Buffer for speaker data
 static int32_t spk_buf[CFG_TUD_AUDIO_FUNC_1_EP_OUT_SW_BUF_SZ / 4];
 // Speaker data size received in the last frame
@@ -351,6 +343,8 @@ extern "C" bool tud_audio_get_req_entity_cb(uint8_t rhport, tusb_control_request
   return false; 	// Yet not implemented
 }
 
+static size_t num_mic_bytes = 0;
+
 extern "C" bool tud_audio_tx_done_pre_load_cb(uint8_t rhport, uint8_t itf, uint8_t ep_in, uint8_t cur_alt_setting)
 {
   (void) rhport;
@@ -360,7 +354,17 @@ extern "C" bool tud_audio_tx_done_pre_load_cb(uint8_t rhport, uint8_t itf, uint8
 
   logger.debug("Audio tx done pre load");
 
-  tud_audio_write ((uint8_t *)test_buffer_audio, CFG_TUD_AUDIO_EP_SZ_IN);
+  // tud_audio_write((uint8_t*)mic_buf, AUDIO_SAMPLE_RATE/1000 * CFG_TUD_AUDIO_FUNC_1_N_BYTES_PER_SAMPLE_TX * CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX);
+  // tud_audio_write((uint8_t*)mic_buf, CFG_TUD_AUDIO_EP_SZ_IN * 2);
+  // tud_audio_write((uint8_t*)mic_buf, AUDIO_SAMPLE_RATE / 1000 * 2);
+  // tud_audio_write((uint8_t*)get_audio_buffer0(), AUDIO_SAMPLE_RATE / 1000 * 2);
+  // tud_audio_write((uint8_t*)mic_buf, CFG_TUD_AUDIO_FUNC_1_EP_IN_SW_BUF_SZ);
+
+  if (num_mic_bytes)
+    tud_audio_write((uint8_t*)mic_buf, num_mic_bytes);
+
+  // // output the mic data back to the computer via usb
+  // tud_audio_write((uint8_t *)mic_buf, spk_data_size);
 
   return true;
 }
@@ -381,7 +385,18 @@ extern "C" bool tud_audio_rx_done_pre_read_cb(uint8_t rhport, uint16_t n_bytes_r
   // play the audio using the I2S peripheral
   audio_play_frame((uint8_t *)spk_buf, spk_data_size);
 
+  // // copy the data from the speaker buffer to the microphone buffer
+  // memcpy(mic_buf, spk_buf, spk_data_size);
+
   return true;
+}
+
+void usb_audio_record() {
+  auto num_bytes = audio_record_frame((uint8_t *)mic_buf, CFG_TUD_AUDIO_FUNC_1_EP_IN_SW_BUF_SZ);
+  if (num_bytes > 0) {
+    // tud_audio_write((uint8_t*)mic_buf, CFG_TUD_AUDIO_FUNC_1_EP_IN_SW_BUF_SZ);
+    tud_audio_write((uint8_t*)mic_buf, num_bytes);
+  }
 }
 
 extern "C" bool tud_audio_tx_done_post_load_cb(uint8_t rhport, uint16_t n_bytes_copied, uint8_t itf, uint8_t ep_in, uint8_t cur_alt_setting)
@@ -394,10 +409,15 @@ extern "C" bool tud_audio_tx_done_post_load_cb(uint8_t rhport, uint16_t n_bytes_
 
   logger.debug("Audio tx done post load");
 
-  for (size_t cnt = 0; cnt < CFG_TUD_AUDIO_EP_SZ_IN/2; cnt++)
-  {
-    test_buffer_audio[cnt] = startVal++;
-  }
+  // get the audio data from the microphone. NOTE: we don't have to use
+  // CFG_TUD_AUDIO_EP_SZ_IN/2 here because we are using 16-bit samples but the
+  // size is in bytes
+  // audio_record_frame((uint8_t *)mic_buf, AUDIO_SAMPLE_RATE/1000 * CFG_TUD_AUDIO_FUNC_1_N_BYTES_PER_SAMPLE_TX * CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX);
+  // audio_record_frame((uint8_t *)mic_buf, AUDIO_SAMPLE_RATE / 1000 * 2);
+  // audio_record_frame((uint8_t *)mic_buf, CFG_TUD_AUDIO_FUNC_1_EP_IN_SW_BUF_SZ);
+  // num_mic_bytes = audio_record_frame((uint8_t *)mic_buf, CFG_TUD_AUDIO_FUNC_1_EP_IN_SW_BUF_SZ);
+
+  num_mic_bytes = audio_record_frame((uint8_t *)mic_buf, CFG_TUD_AUDIO_EP_SZ_IN);
 
   return true;
 }
@@ -406,7 +426,6 @@ extern "C" bool tud_audio_set_itf_close_EP_cb(uint8_t rhport, tusb_control_reque
 {
   (void) rhport;
   (void) p_request;
-  startVal = 0;
 
   logger.debug("Audio set interface close EP");
 

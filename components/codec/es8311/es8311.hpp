@@ -41,6 +41,11 @@ void set_es8311_read(read_register_fn fn);
 extern "C" {
 #endif
 
+/* ES8311 address
+ * 0x32:CE=1;0x30:CE=0
+ */
+#define ES8311_ADDR         0x18
+
 /*
  *   ES8311_REGISTER NAME_REG_REGISTER ADDRESS
  */

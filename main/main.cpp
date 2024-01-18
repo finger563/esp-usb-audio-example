@@ -1,6 +1,10 @@
 #include <chrono>
 #include <thread>
 
+extern "C" {
+#include <tusb.h>
+}
+
 #include "i2c.hpp"
 #include "logger.hpp"
 #include "task.hpp"
@@ -31,11 +35,12 @@ extern "C" void app_main(void) {
       .sda_pullup_en = GPIO_PULLUP_ENABLE,
       .scl_pullup_en = GPIO_PULLUP_ENABLE});
 
-  // // initialize the audio codecs
   logger.info("Initializing audio");
   audio_init(internal_i2c);
 
-  // initialize the USB device
+  // set the volume to 60%
+  set_audio_volume(60);
+
   logger.info("Initializing USB");
   usb_init();
 
@@ -46,15 +51,29 @@ extern "C" void app_main(void) {
   espp::Task task({
       .name = "Hello World",
       .callback = [&](auto &m, auto &cv) -> bool {
-        logger.debug("[{:.3f}] Hello from the task!", elapsed());
-        std::unique_lock<std::mutex> lock(m);
-        cv.wait_for(lock, 1s);
+        // size_t audio_input_size = get_audio_input_size();
+        // if (audio_input_size > 0) {
+        //   tud_audio_write((uint8_t*)get_audio_buffer0(), audio_input_size);
+        // }
+
+        // static int audio_buffer_index = 0;
+        // auto audio_buffer = audio_buffer_index == 0 ? get_audio_buffer0() : get_audio_buffer1();
+        // audio_buffer_index = (audio_buffer_index + 1) % 2;
+        // audio_record_frame((uint8_t*)audio_buffer, CFG_TUD_AUDIO_EP_SZ_IN);
+        // tud_audio_write((uint8_t*)audio_buffer, CFG_TUD_AUDIO_EP_SZ_IN);
+
+        // logger.debug("[{:.3f}] Hello from the task!", elapsed());
+        // std::unique_lock<std::mutex> lock(m);
+        // cv.wait_for(lock, 1s);
+
+        // usb_audio_record();
+
         // we don't want to stop the task, so return false
         return false;
       },
       .stack_size_bytes = 4096,
     });
-  task.start();
+  // task.start();
 
   // also print in the main thread
   while (true) {
