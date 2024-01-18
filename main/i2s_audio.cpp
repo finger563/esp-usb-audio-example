@@ -113,34 +113,12 @@ static esp_err_t i2s_driver_init(void)
   ESP_ERROR_CHECK(i2s_channel_init_std_mode(tx_handle, &std_cfg));
   ESP_ERROR_CHECK(i2s_channel_init_std_mode(rx_handle, &std_cfg));
 
-  // NOTE: if we want to try to use the asyncrhonous mode, we can use this code:
-  // ----------------------------------------
-
-  // static i2s_event_callbacks_t rx_callbacks;
-  // rx_callbacks.on_recv = [](i2s_chan_handle_t handle, i2s_event_data_t *event, void *user_ctx) -> bool {
-  //   // buffer that was just filled
-  //   uint8_t *data = (uint8_t*)event->data;
-  //   // number of bytes in the buffer
-  //   audio_input_size = event->size;
-  //   if (audio_input_size > 0) {
-  //     // memcpy(audio_buffer0, data, audio_input_size);
-  //     tud_audio_write(data, audio_input_size / 2);
-  //   }
-  //   return false;
-  // };
-
-  // ret_val = i2s_channel_register_event_callback(rx_handle, &rx_callbacks, NULL);
-  // if (ret_val != ESP_OK) {
-  //   logger.error("ERROR registering i2s event callback: {}", ret_val);
-  //   return ret_val;
-  // }
-
   ESP_ERROR_CHECK(i2s_channel_enable(tx_handle));
   ESP_ERROR_CHECK(i2s_channel_enable(rx_handle));
   return ret_val;
 }
 
-// es7210 is for audio input codec
+// es7210 is for audio input codec on ESP32-S3-BOX
 [[maybe_unused]]
 static esp_err_t es7210_init_default(void)
 {
@@ -176,7 +154,7 @@ static esp_err_t es7210_init_default(void)
   return ret_val;
 }
 
-// es8311 is for audio output codec
+// es8311 is for audio output codec on ESP32-S3-BOX
 [[maybe_unused]]
 static esp_err_t es8311_init_default(void)
 {
@@ -212,24 +190,10 @@ static esp_err_t es8311_init_default(void)
   return ret_val;
 }
 
+// es8388 is for audio input & output codec on LyraT
 [[maybe_unused]]
 static esp_err_t es8388_init_default(void) {
-  // static audio_codec_i2c_cfg_t i2c_cfg =  {
-  //   .port = box_hal::internal_i2c_port,
-  //   .addr = ES7210_CODEC_DEFAULT_ADDR,
-  // };
-  // const audio_codec_ctrl_if_t *i2c_ctrl_if = audio_codec_new_i2c_ctrl(&i2c_cfg);
-
-  // // static es7210_codec_cfg_t es7210_codec_cfg = {};
-  // // es7210_codec_cfg.ctrl_if = i2c_ctrl_if;
-  // // es7210_codec_new(&es7210_codec_cfg);
-
-  // static es8388_codec_cfg_t es8388_codec_cfg = {};
-  // es8388_codec_cfg.ctrl_if = i2c_ctrl_if;
-  // es8388_codec_new(&es8388_codec_cfg);
-
   // see esp-adf/components/audio_board/lyrat_v4_2/board_def.h
-
   logger.info("initializing es8388 codec...");
   esp_err_t ret_val = ESP_OK;
   audio_hal_codec_config_t cfg;

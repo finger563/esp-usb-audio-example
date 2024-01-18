@@ -83,7 +83,11 @@ static const char *ES_TAG = "ES8388_DRIVER";
 static esp_err_t es_write_reg(uint8_t slave_addr, uint8_t reg_addr, uint8_t data)
 {
     uint8_t write_buf[2] = {reg_addr, data};
-    bool success = i2c_write_(slave_addr, write_buf, sizeof(write_buf));
+    bool success = i2c_write_( slave_addr, write_buf, sizeof(write_buf));
+    if (!success) {
+        ESP_LOGE(ES_TAG, "es8388_write_reg error to write reg:0x%x, data:0x%x", reg_addr, data);
+        return ESP_FAIL;
+    }
     return success ? ESP_OK : ESP_FAIL;
     // return i2c_bus_write_bytes(i2c_handle, slave_addr, &reg_add, sizeof(reg_add), &data, sizeof(data));
 }
@@ -316,8 +320,7 @@ esp_err_t es8388_init(audio_hal_codec_config_t *cfg)
     res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL25, 0x1E);
     res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL26, 0);
     res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL27, 0);
-    // TODO:
-    // res |= es8388_set_adc_dac_volume(ES_MODULE_DAC, 0, 0);       // 0db
+    res |= es8388_set_adc_dac_volume(ES_MODULE_DAC, 0, 0);       // 0db
     int tmp = 0;
     if (AUDIO_HAL_DAC_OUTPUT_LINE2 == cfg->dac_output) {
         tmp = DAC_OUTPUT_LOUT1 | DAC_OUTPUT_ROUT1;
@@ -407,10 +410,20 @@ esp_err_t es8388_set_voice_volume(int volume)
 {
     esp_err_t res = ESP_OK;
     uint8_t reg = 0;
-    // TODO:
-    // reg = audio_codec_get_dac_reg_value(dac_vol_handle, volume);
-    res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL5, reg);
-    res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL4, reg);
+
+    // compute the volume that we should be setting the codec to
+    // based on the current volume and the volume range of the codec
+    volume = std::clamp<int>(volume, 0, 100);
+    volume /= 3;
+
+    res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL24, volume);
+    res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL25, volume);
+    res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL26, 0);
+    res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL27, 0);
+
+    // TODO: this was the newer code...
+    // res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL5, reg);
+    // res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL4, reg);
     // TODO:
     // ESP_LOGD(ES_TAG, "Set volume:%.2d reg_value:0x%.2x dB:%.1f", (int)dac_vol_handle->user_volume, reg,
     //         audio_codec_cal_dac_volume(dac_vol_handle));
@@ -421,17 +434,22 @@ esp_err_t es8388_get_voice_volume(int *volume)
 {
     esp_err_t res = ESP_OK;
     uint8_t reg = 0;
-    res = es_read_reg(ES8388_DACCONTROL4, &reg);
+    // TODO: this was the newer code...
+    // res = es_read_reg(ES8388_DACCONTROL4, &reg);
+    res = es_read_reg(ES8388_DACCONTROL24, &reg);
     if (res == ESP_FAIL) {
         *volume = 0;
     } else {
-        // TODO:
+        // TODO: this was the newer code
         // if (reg == dac_vol_handle->reg_value) {
         //     *volume = dac_vol_handle->user_volume;
         // } else {
         //     *volume = 0;
         //     res = ESP_FAIL;
         // }
+        *volume = reg;
+        *volume *= 3;
+        if (*volume == 99) *volume = 100;
     }
     ESP_LOGD(ES_TAG, "Get volume:%.2d reg_value:0x%.2x", *volume, reg);
     return res;
