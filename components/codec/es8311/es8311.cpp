@@ -40,11 +40,6 @@ void set_es8311_read(read_register_fn fn) {
 #define BIT(x) (1U << (x))
 #endif
 
-/* ES8311 address
- * 0x32:CE=1;0x30:CE=0
- */
-#define ES8311_ADDR         0x18
-
 /*
  * to define the clock soure of MCLK
  */

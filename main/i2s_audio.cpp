@@ -52,6 +52,8 @@ static int16_t *audio_buffer1;
 
 static std::atomic<int> volume_{100};
 
+static bool use_8311 = false;
+
 static espp::Logger logger({.tag = "I2S Audio", .level = espp::Logger::Verbosity::INFO});
 
 int16_t *get_audio_buffer0() {
@@ -69,9 +71,11 @@ size_t get_audio_input_size() {
 }
 
 void update_volume_output() {
-  // TODO: update to use es8388
-  // es8311_codec_set_voice_volume(volume_);
-  es8388_set_voice_volume(volume_);
+  if (use_8311) {
+    es8311_codec_set_voice_volume(volume_);
+  } else {
+    es8388_set_voice_volume(volume_);
+  }
 }
 
 void set_audio_volume(int percent) {
@@ -233,27 +237,57 @@ static bool initialized = false;
 void audio_init(std::shared_ptr<espp::I2c> internal_i2c) {
   if (initialized) return;
 
-  // probe the i2c for the es8388 device address
-  std::vector<uint8_t> es8388_addrs = {ES8388_ADDR_CE0, ES8388_ADDR_CE1};
-  bool can_communicate = false;
-  for (auto addr : es8388_addrs) {
-    can_communicate = internal_i2c->probe_device(addr);
-    if (can_communicate) {
+  // determine if we're running on the box (ESP32-S3-BOX) or the dev board
+  // (LyraT). We do this by probing the i2c bus for the es7210, es8311, and
+  // es8388 devices. If we get the es7210 and the es8311, we're on the box. If
+  // we get the es8388, we're on the dev board.
+
+  // probe the i2c for the es7210 device address
+  bool has_es7210 = false;
+  std::vector<uint8_t> es7210_addrs = {ES7210_AD1_AD0_00, ES7210_AD1_AD0_01, ES7210_AD1_AD0_10, ES7210_AD1_AD0_11};
+  for (auto addr : es7210_addrs) {
+    has_es7210 = internal_i2c->probe_device(addr);
+    if (has_es7210) {
       break;
     }
   }
-  fmt::print("Can communicate with es8388: {}\n", can_communicate);
+  fmt::print("Can communicate with es7210: {}\n", has_es7210);
 
-  // /* Config power control IO */
-  // gpio_config_t io_conf;
-  // io_conf.intr_type = GPIO_INTR_DISABLE;
-  // io_conf.mode = GPIO_MODE_OUTPUT;
-  // io_conf.pin_bit_mask = 1ULL << (int)sound_power_pin;
-  // io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
-  // io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
-  // gpio_config(&io_conf);
+  // probe the i2c for the es8311 device address
+  bool has_es8311 = false;
+  std::vector<uint8_t> es8311_addrs = {ES8311_ADDR};
+  for (auto addr : es8311_addrs) {
+    has_es8311 = internal_i2c->probe_device(addr);
+    if (has_es8311) {
+      break;
+    }
+  }
+  fmt::print("Can communicate with es8311: {}\n", has_es8311);
 
-  // gpio_set_level(sound_power_pin, 1);
+  // probe the i2c for the es8388 device address
+  std::vector<uint8_t> es8388_addrs = {ES8388_ADDR_CE0, ES8388_ADDR_CE1};
+  bool has_8388 = false;
+  for (auto addr : es8388_addrs) {
+    has_8388 = internal_i2c->probe_device(addr);
+    if (has_8388) {
+      break;
+    }
+  }
+  fmt::print("Can communicate with es8388: {}\n", has_8388);
+
+  bool is_box = has_es7210 && has_es8311;
+
+  if (is_box) {
+    /* Config power control IO */
+    gpio_config_t io_conf;
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    io_conf.mode = GPIO_MODE_OUTPUT;
+    io_conf.pin_bit_mask = 1ULL << (int)sound_power_pin;
+    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
+    gpio_config(&io_conf);
+    gpio_set_level(sound_power_pin, 1);
+  }
 
   set_es7210_write(std::bind(&espp::I2c::write, internal_i2c.get(),
                              std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
@@ -272,20 +306,31 @@ void audio_init(std::shared_ptr<espp::I2c> internal_i2c) {
 
   i2s_driver_init();
   esp_err_t err = ESP_OK;
-  // err = es7210_init_default();
-  // if (err != ESP_OK) {
-  //   logger.error("ERROR initializing ES7210 audio: {}", err);
-  //   return;
-  // }
-  // err = es8311_init_default();
-  // if (err != ESP_OK) {
-  //   logger.error("ERROR initializing ES8311 audio: {}", err);
-  //   return;
-  // }
-  err = es8388_init_default();
-  if (err != ESP_OK) {
-    logger.error("ERROR initializing ES8388 audio: {}", err);
-    return;
+
+  if (has_es7210) {
+    err = es7210_init_default();
+    if (err != ESP_OK) {
+      logger.error("ERROR initializing ES7210 audio: {}", err);
+      return;
+    }
+  }
+
+  if (has_es8311) {
+    err = es8311_init_default();
+    if (err != ESP_OK) {
+      logger.error("ERROR initializing ES8311 audio: {}", err);
+      return;
+    }
+    use_8311 = true;
+  }
+
+  if (has_8388) {
+    err = es8388_init_default();
+    if (err != ESP_OK) {
+      logger.error("ERROR initializing ES8388 audio: {}", err);
+      return;
+    }
+    use_8311 = false;
   }
 
   audio_buffer0 = (int16_t*)heap_caps_malloc(sizeof(int16_t) * AUDIO_BUFFER_SIZE + 10, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
